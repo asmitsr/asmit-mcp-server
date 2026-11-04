@@ -37,8 +37,25 @@ All notable changes to Asmit Dev Tools are recorded here.
   protocol test updated with an SSRF assertion and the upgraded
   `repo_health` fields. Ruff clean.
 
+### Fixed
+
+- Packaging: `pyproject.toml` now lists `packages = ["core", "tools"]`
+  alongside `py-modules = ["server"]`. Before this fix, `pip install .`
+  shipped only `server.py`, so an installed server failed outside the
+  repo with `ModuleNotFoundError: No module named 'core'` — the
+  documented uvx install would have been broken after the modular
+  refactor. Verified with a fresh-venv install: `core/`, `tools/` and
+  `server.py` are all present and importable outside the repo.
+
 ### Known limitations of this phase
 
+- DNS rebinding: the SSRF guard resolves DNS and checks the address,
+  but the connection then resolves the hostname a second time, so
+  check-time and connect-time IPs could differ if DNS flips in between
+  (TOCTOU). Static private/localhost/metadata cases are blocked in
+  this phase; the fix — an IP-pinned connection that connects to the
+  validated IP while preserving the Host header and TLS
+  `server_hostname` — is a Phase 2 hardening item.
 - The public-URL path of `check_url_status` could not be verified
   end-to-end in the proxied test environment (local DNS maps every
   hostname to a synthetic reserved address, so the guard blocks it
@@ -46,9 +63,9 @@ All notable changes to Asmit Dev Tools are recorded here.
   addresses. See README "Honest limits".
 - Client compatibility (Claude Desktop, VS Code, Cursor) is still
   untested — it needs a PC. Nothing is claimed about it.
-- CI is not in this branch: the GitHub App cannot create workflow
-  files, so `.github/workflows/ci.yml` is prepared separately for
-  addition via the web UI after this phase.
+- CI is on this branch via the web UI (the GitHub App cannot create
+  workflow files). Run #1 failed because the install step was missing;
+  run #2 passed after adding `pip install . ruff`.
 
 ## v1.0.0 — 4 November 2026
 
