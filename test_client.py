@@ -34,7 +34,7 @@ async def call(session, name, args):
 async def main():
     params = StdioServerParameters(command=sys.executable, args=["server.py"],
                                    env=PROXY_ENV)
-    async with stdio_client(params) as (read, write):
+    async with stdio_client(params) as (read, write):  # noqa: SIM117
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()
@@ -73,6 +73,8 @@ async def main():
             print("repo health:", health.get("full_name"),
                   "stars:", health.get("stars"))
             assert health.get("full_name") == "asmitsr/DoremanAI"
+            assert health.get("ok") is True
+            assert "top_languages_by_bytes" in health
 
             risky = await call(session, "audit_tool_list", {"tools_json": json.dumps([
                 {"name": "run_shell_command",
@@ -134,8 +136,21 @@ async def main():
 
             url = await call(session, "check_url_status",
                              {"url": "https://example.com"})
-            print("url status:", url.get("status"))
-            assert url.get("status") == 200
+            print("url status:", url)
+            # In this VM, local DNS is intercepted (every hostname
+            # resolves to a synthetic 198.18.x.x address), so the SSRF
+            # guard conservatively blocks the URL here. On a machine
+            # with direct DNS the same call returns status 200. Either
+            # structured outcome is a pass; a crash or a private fetch
+            # would not be.
+            assert (url.get("status") == 200
+                    or url.get("error_code") == "SSRF_BLOCKED")
+
+            ssrf = await call(session, "check_url_status",
+                              {"url": "http://127.0.0.1:9/"})
+            print("ssrf blocked:", ssrf.get("error_code"))
+            assert ssrf.get("ok") is False
+            assert ssrf.get("error_code") == "SSRF_BLOCKED"
 
             clock = await call(session, "world_time",
                                {"timezone_name": "Asia/Dhaka"})

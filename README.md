@@ -18,16 +18,40 @@ program, not a website — it runs over stdio and is not deployed to Vercel.
 | `split_expense` | Splits an expense equally or by custom shares and simplifies who owes whom. Money is handled in integer poisha, never floats, so shares always add up exactly. |
 | `settle_balances` | Simplifies any set of balances (who is owed / owes) into the fewest payments. |
 | `convert_currency` | Converts between currencies with a free no-key exchange-rate API. Indicative rates only. |
-| `repo_health` | Health summary of a **public** GitHub repository: stars, forks, open issues, language, license, days since last push. No token is used; private repos return "not found" by GitHub's design. |
+| `repo_health` | Health summary of a **public** GitHub repository: stars, forks, open issues, language, license, days since last push, top languages by bytes, and open pull requests counted from the first 100. No token is used; private repos return "not found" by GitHub's design. |
 | `repo_compare` | Side-by-side health of two public repositories. |
 | `github_user_summary` | Public user summary: repo count, followers, total stars on fetched repos, top languages. Public data only. |
 | `audit_tool_list` | Static security checklist for an MCP server's tool list (score + findings + fixes). Nothing is run and nothing connects to a live server. |
-| `check_url_status` | Checks whether a URL is reachable and what status it returns (HEAD, falling back on error). |
+| `check_url_status` | Checks whether a URL is reachable and what status it returns (HEAD). Guarded against SSRF: only globally routable addresses may be fetched, and every redirect target is re-validated (max 5 redirects). |
 | `world_time` | Current time in any IANA timezone, plus UTC and Asia/Dhaka. |
 
 Deliberately **not** included: shell execution, file writes, database
 writes, money movement, or anything that handles secrets. Those are
 exactly the capabilities the MCP security discussion warns about.
+
+## Architecture (Phase 1)
+
+`server.py` is only the registrar (FastMCP + logging wrapper). Tool
+logic lives in `tools/` — `security.py`, `finance.py`, `github.py`,
+`utility.py` — and shared helpers live in `core/` — `errors.py`
+(response format), `validation.py` (input rules), `http.py` (timeouts,
+response cap, rate limit), `cache.py` (currency-rate cache),
+`ratelimit.py` (per-host call limit), `ssrf.py` (URL guard).
+
+Error format: success is `{"ok": true, ...data}`; errors are
+`{"ok": false, "error": "message", "error_code": "CODE"}` where CODE is
+`VALIDATION_ERROR`, `NOT_FOUND`, `RATE_LIMITED`, `EXTERNAL_API_ERROR`,
+`SSRF_BLOCKED` or `UNKNOWN_ERROR`. Input problems raise a validation
+error that the server wrapper converts; external API problems return
+their code directly. Logs go to stderr only (stdout is the MCP
+channel) and record tool name, success/failure, duration and error
+code — never inputs, passwords, tokens or arguments.
+
+Validation is FastMCP/Pydantic at the protocol level plus explicit
+domain rules in `core/validation.py` (types, ranges, length caps,
+GitHub name shapes, finite numbers, 3-letter currency codes). No
+separate Pydantic model layer was added: it would duplicate what
+FastMCP already does without adding safety.
 
 ## Install and use
 
@@ -74,10 +98,18 @@ Protocol test (stdio, lists tools and calls each one):
 .venv/bin/python test_client.py
 ```
 
-Offline unit tests for the pure-computation tools:
+Offline unit tests for the pure-computation tools, including SSRF,
+rate-limit, timeout, currency-failure and expense edge cases:
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
+```
+
+Lint:
+
+```bash
+.venv/bin/pip install ruff
+.venv/bin/ruff check server.py core tools tests test_client.py
 ```
 
 The test client connects over stdio, lists the tools, and calls each
@@ -89,7 +121,19 @@ public repo, and safe vs risky tool lists for the audit.
 - This server never runs shell commands, never writes files, and never
   moves money. That is a safety choice, not a missing feature.
 - `repo_health` uses GitHub's unauthenticated public API, so it is
-  subject to GitHub's 60 requests/hour limit for shared IPs.
+  subject to GitHub's 60 requests/hour limit for shared IPs. The server
+  also applies its own generous per-host limit (50 calls/minute) so a
+  runaway client cannot burn that budget, and currency rates are cached
+  in memory for 5 minutes. An optional `GITHUB_TOKEN` is not supported
+  yet — the server is designed to need no token at all.
+- `check_url_status`'s SSRF guard resolves the hostname locally and
+  requires a globally routable address. On networks where local DNS is
+  intercepted (a VM whose resolver maps every hostname to a synthetic
+  reserved address), the guard blocks instead of fetching — it never
+  fails open. On a normal machine with direct DNS, public URLs pass.
+  The guard was verified with mocked DNS and with private addresses;
+  the public-URL path was not verified end-to-end in the proxied test
+  environment, for exactly this reason.
 - MCP clients pass only a small environment whitelist to a stdio
   server by default. If your network needs a proxy, add its variables
   in your client's `env` config for this server; the included

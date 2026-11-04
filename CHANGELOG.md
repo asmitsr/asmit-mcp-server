@@ -2,6 +2,71 @@
 
 All notable changes to Asmit Dev Tools are recorded here.
 
+## Unreleased — Phase 1: Security & Architecture (branch `phase-1-security`, not merged)
+
+### Security
+
+- SSRF guard for `check_url_status` (`core/ssrf.py`): only http/https,
+  no credentials in URLs, hostname must resolve to globally routable
+  addresses only (blocks localhost, private, link-local including cloud
+  metadata 169.254.169.254, multicast, reserved), every redirect target
+  re-validated, max 5 redirects. Resolved addresses are never echoed in
+  error messages.
+- Explicit input validation (`core/validation.py`): types, ranges,
+  length caps, GitHub name shapes, finite numbers, 3-letter currency
+  codes. Bad input returns a clean error, never a traceback.
+- Logging to stderr only, recording tool name, success/failure,
+  duration and error code — never inputs, passwords, tokens or arguments.
+- Outgoing calls: 15-second timeouts, 2 MB response cap, per-host rate
+  limit (50 calls/minute), currency rates cached in memory for 5 minutes.
+
+### Changed
+
+- Modular structure: `server.py` is now only the registrar; tools live
+  in `tools/` (security, finance, github, utility) and shared helpers
+  in `core/` (errors, validation, http, cache, ratelimit, ssrf).
+- Standard error format: success `{"ok": true, ...data}`; errors
+  `{"ok": false, "error": "message", "error_code": "CODE"}`. The
+  `error` field stays a plain string, so v1.0.0 readers keep working.
+- `repo_health` now also returns top languages by bytes and open pull
+  requests counted from the first 100; failures of those extra calls
+  report null instead of failing the whole health check.
+- `check_url_status` timeout standardised to 15 seconds.
+- Tests: 28 unit tests (was 13), including SSRF, redirect-handler,
+  rate-limit, timeout, currency-failure and expense edge cases;
+  protocol test updated with an SSRF assertion and the upgraded
+  `repo_health` fields. Ruff clean.
+
+### Fixed
+
+- Packaging: `pyproject.toml` now lists `packages = ["core", "tools"]`
+  alongside `py-modules = ["server"]`. Before this fix, `pip install .`
+  shipped only `server.py`, so an installed server failed outside the
+  repo with `ModuleNotFoundError: No module named 'core'` — the
+  documented uvx install would have been broken after the modular
+  refactor. Verified with a fresh-venv install: `core/`, `tools/` and
+  `server.py` are all present and importable outside the repo.
+
+### Known limitations of this phase
+
+- DNS rebinding: the SSRF guard resolves DNS and checks the address,
+  but the connection then resolves the hostname a second time, so
+  check-time and connect-time IPs could differ if DNS flips in between
+  (TOCTOU). Static private/localhost/metadata cases are blocked in
+  this phase; the fix — an IP-pinned connection that connects to the
+  validated IP while preserving the Host header and TLS
+  `server_hostname` — is a Phase 2 hardening item.
+- The public-URL path of `check_url_status` could not be verified
+  end-to-end in the proxied test environment (local DNS maps every
+  hostname to a synthetic reserved address, so the guard blocks it
+  there). Guard logic itself is verified with mocked DNS and private
+  addresses. See README "Honest limits".
+- Client compatibility (Claude Desktop, VS Code, Cursor) is still
+  untested — it needs a PC. Nothing is claimed about it.
+- CI is on this branch via the web UI (the GitHub App cannot create
+  workflow files). Run #1 failed because the install step was missing;
+  run #2 passed after adding `pip install . ruff`.
+
 ## v1.0.0 — 4 November 2026
 
 ### Added
