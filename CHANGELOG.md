@@ -2,6 +2,54 @@
 
 All notable changes to Asmit Dev Tools are recorded here.
 
+## Unreleased — Phase 1: Security & Architecture (branch `phase-1-security`, not merged)
+
+### Security
+
+- SSRF guard for `check_url_status` (`core/ssrf.py`): only http/https,
+  no credentials in URLs, hostname must resolve to globally routable
+  addresses only (blocks localhost, private, link-local including cloud
+  metadata 169.254.169.254, multicast, reserved), every redirect target
+  re-validated, max 5 redirects. Resolved addresses are never echoed in
+  error messages.
+- Explicit input validation (`core/validation.py`): types, ranges,
+  length caps, GitHub name shapes, finite numbers, 3-letter currency
+  codes. Bad input returns a clean error, never a traceback.
+- Logging to stderr only, recording tool name, success/failure,
+  duration and error code — never inputs, passwords, tokens or arguments.
+- Outgoing calls: 15-second timeouts, 2 MB response cap, per-host rate
+  limit (50 calls/minute), currency rates cached in memory for 5 minutes.
+
+### Changed
+
+- Modular structure: `server.py` is now only the registrar; tools live
+  in `tools/` (security, finance, github, utility) and shared helpers
+  in `core/` (errors, validation, http, cache, ratelimit, ssrf).
+- Standard error format: success `{"ok": true, ...data}`; errors
+  `{"ok": false, "error": "message", "error_code": "CODE"}`. The
+  `error` field stays a plain string, so v1.0.0 readers keep working.
+- `repo_health` now also returns top languages by bytes and open pull
+  requests counted from the first 100; failures of those extra calls
+  report null instead of failing the whole health check.
+- `check_url_status` timeout standardised to 15 seconds.
+- Tests: 28 unit tests (was 13), including SSRF, redirect-handler,
+  rate-limit, timeout, currency-failure and expense edge cases;
+  protocol test updated with an SSRF assertion and the upgraded
+  `repo_health` fields. Ruff clean.
+
+### Known limitations of this phase
+
+- The public-URL path of `check_url_status` could not be verified
+  end-to-end in the proxied test environment (local DNS maps every
+  hostname to a synthetic reserved address, so the guard blocks it
+  there). Guard logic itself is verified with mocked DNS and private
+  addresses. See README "Honest limits".
+- Client compatibility (Claude Desktop, VS Code, Cursor) is still
+  untested — it needs a PC. Nothing is claimed about it.
+- CI is not in this branch: the GitHub App cannot create workflow
+  files, so `.github/workflows/ci.yml` is prepared separately for
+  addition via the web UI after this phase.
+
 ## v1.0.0 — 4 November 2026
 
 ### Added
