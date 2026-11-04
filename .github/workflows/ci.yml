@@ -15,3 +15,9 @@ jobs:
       - run: pip install . ruff
       - run: ruff check server.py core tools tests test_client.py
       - run: python -m unittest discover -s tests -v
+      - name: Import check (clean venv)
+        run: |
+          python -m venv /tmp/import-check-venv
+          /tmp/import-check-venv/bin/pip install .
+          cd /tmp
+          /tmp/import-check-venv/bin/python -c "import asmit_mcp.server"
