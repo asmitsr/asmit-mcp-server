@@ -1,0 +1,29 @@
+[project]
+name = "asmit-dev-tools-mcp"
+version = "1.0.0"
+description = "A small, safe MCP server: password breach check, expense splitting, public repo health, and a static tool-list audit."
+readme = "README.md"
+authors = [{name = "Asmit Sarkar"}]
+keywords = ["mcp", "model-context-protocol", "claude", "security", "github"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.10"
+# Pinned to v1: pip installed mcp 2.x, which renamed FastMCP to
+# MCPServer and broke the v1 import. v1 is the documented, stable API
+# most clients and tutorials use.
+dependencies = ["mcp>=1.0,<2"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["server"]
+
+[project.scripts]
+asmit-dev-tools = "server:main"
