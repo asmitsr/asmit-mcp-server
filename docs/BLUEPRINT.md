@@ -1,3 +1,5 @@
+> Note (Phase 2, namespace move): the code described below now lives under `asmit_mcp/` — `asmit_mcp/server.py`, `asmit_mcp/core/`, `asmit_mcp/tools/`. Path references in the audit and Phase 1 decisions below refer to the pre-Phase-2 layout and are kept as written.
+
 # Final Upgrade Blueprint — Asmit Dev Tools MCP Server
 
 Goal: turn a working 12-tool MCP server into a professional, secure,
