@@ -1,6 +1,6 @@
 [project]
 name = "asmit-mcp-server"
-version = "1.0.0"
+version = "0.1.0"
 description = "A small, safe MCP server: password breach check, expense splitting, public repo health, and a static tool-list audit."
 readme = "README.md"
 authors = [{name = "Asmit Sarkar"}]
