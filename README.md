@@ -143,3 +143,15 @@ public repo, and safe vs risky tool lists for the audit.
   A high score does not prove a server is safe.
 - Never give this server (or any MCP server) your API keys, passwords
   or tokens. It does not need them.
+
+## Known limitations
+
+- DNS rebinding (TOCTOU): `check_url_status` validates the addresses a
+  hostname resolves to, but the connection then resolves the hostname
+  again. An attacker-controlled DNS record could change between the
+  check and the connection, so the guard alone does not close this
+  gap. A fix is planned for a later Phase 2 step: connect to the
+  validated IP while keeping the original Host header and TLS SNI.
+- Client testing: the server has only been tested with a Python MCP
+  client over stdio. Claude Desktop, VS Code, and Cursor have NOT
+  been tested yet.
