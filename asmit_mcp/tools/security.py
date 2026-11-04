@@ -9,9 +9,9 @@ import hashlib
 import json
 import re
 
-from core.errors import ValidationError, failure, success
-from core.http import get_text
-from core.validation import req_str, req_text
+from asmit_mcp.core.errors import ValidationError, failure, success
+from asmit_mcp.core.http import get_text
+from asmit_mcp.core.validation import req_str, req_text
 
 _CHECKS = [
     ("critical", "Shell / code execution",

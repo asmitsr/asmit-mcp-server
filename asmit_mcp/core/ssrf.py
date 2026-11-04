@@ -36,7 +36,7 @@ import socket
 import urllib.parse
 import urllib.request
 
-from core.errors import ValidationError
+from asmit_mcp.core.errors import ValidationError
 
 
 class SSRFBlockedError(Exception):

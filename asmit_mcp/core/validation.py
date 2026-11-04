@@ -12,7 +12,7 @@ response, never a traceback.
 import math
 import re
 
-from .errors import ValidationError
+from asmit_mcp.core.errors import ValidationError
 
 _GITHUB_NAME = re.compile(r"^[A-Za-z0-9_.-]+$")
 

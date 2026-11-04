@@ -12,10 +12,10 @@ import urllib.request
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from core.errors import SSRF_BLOCKED, failure, success
-from core.http import TIMEOUT_SECONDS, USER_AGENT
-from core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
-from core.validation import ValidationError, req_str, req_url
+from asmit_mcp.core.errors import SSRF_BLOCKED, failure, success
+from asmit_mcp.core.http import TIMEOUT_SECONDS, USER_AGENT
+from asmit_mcp.core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
+from asmit_mcp.core.validation import ValidationError, req_str, req_url
 
 
 def password_strength(password: str) -> str:

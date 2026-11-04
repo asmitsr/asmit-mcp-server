@@ -31,7 +31,7 @@ exactly the capabilities the MCP security discussion warns about.
 
 ## Architecture (Phase 1)
 
-`server.py` is only the registrar (FastMCP + logging wrapper). Tool
+`asmit_mcp/server.py` is only the registrar (FastMCP + logging wrapper). Tool
 logic lives in `tools/` — `security.py`, `finance.py`, `github.py`,
 `utility.py` — and shared helpers live in `core/` — `errors.py`
 (response format), `validation.py` (input rules), `http.py` (timeouts,
@@ -80,7 +80,7 @@ Claude Desktop config (`claude_desktop_config.json`), using `uvx`:
 Or run the server directly for testing:
 
 ```bash
-.venv/bin/python server.py
+.venv/bin/python -m asmit_mcp.server
 ```
 
 ## Example prompts (once connected)
@@ -109,7 +109,7 @@ Lint:
 
 ```bash
 .venv/bin/pip install ruff
-.venv/bin/ruff check server.py core tools tests test_client.py
+.venv/bin/ruff check asmit_mcp tests test_client.py
 ```
 
 The test client connects over stdio, lists the tools, and calls each
@@ -143,3 +143,15 @@ public repo, and safe vs risky tool lists for the audit.
   A high score does not prove a server is safe.
 - Never give this server (or any MCP server) your API keys, passwords
   or tokens. It does not need them.
+
+## Known limitations
+
+- DNS rebinding (TOCTOU): `check_url_status` validates the addresses a
+  hostname resolves to, but the connection then resolves the hostname
+  again. An attacker-controlled DNS record could change between the
+  check and the connection, so the guard alone does not close this
+  gap. A fix is planned for a later Phase 2 step: connect to the
+  validated IP while keeping the original Host header and TLS SNI.
+- Client testing: the server has only been tested with a Python MCP
+  client over stdio. Claude Desktop, VS Code, and Cursor have NOT
+  been tested yet.

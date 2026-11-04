@@ -8,9 +8,9 @@ GitHub's 60 requests/hour limit for shared IPs.
 
 from datetime import datetime, timezone
 
-from core.errors import failure, success
-from core.http import get_json
-from core.validation import req_github_name, req_str
+from asmit_mcp.core.errors import failure, success
+from asmit_mcp.core.http import get_json
+from asmit_mcp.core.validation import req_github_name, req_str
 
 
 def _summarize_repo(data):

@@ -1,5 +1,5 @@
 """Tool modules, one per category. Each module defines plain functions
-(no FastMCP decorator); server.py imports and registers them.
+(no FastMCP decorator); asmit_mcp/server.py imports and registers them.
 
 Categories:
   security — breach check, tool-list audit

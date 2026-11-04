@@ -1,7 +1,7 @@
 """Small HTTP helpers for the public, no-key APIs this server uses.
 
 Timeouts are always set, so a dead API cannot hang a tool call.
-Failures are mapped to (code, message) pairs from core.errors, never
+Failures are mapped to (code, message) pairs from asmit_mcp.core.errors, never
 raised as tracebacks to the client.
 """
 
@@ -10,8 +10,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .errors import EXTERNAL_API_ERROR, NOT_FOUND, RATE_LIMITED
-from .ratelimit import RATE_LIMITER
+from asmit_mcp.core.errors import EXTERNAL_API_ERROR, NOT_FOUND, RATE_LIMITED
+from asmit_mcp.core.ratelimit import RATE_LIMITER
 
 USER_AGENT = "asmit-dev-tools-mcp/1.1"
 TIMEOUT_SECONDS = 15

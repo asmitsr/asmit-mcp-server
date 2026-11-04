@@ -21,12 +21,12 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.errors import ValidationError
-from core.ratelimit import RateLimiter
-from core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
-from tools.finance import convert_currency, settle_balances, split_expense
-from tools.security import audit_tool_list
-from tools.utility import (
+from asmit_mcp.core.errors import ValidationError
+from asmit_mcp.core.ratelimit import RateLimiter
+from asmit_mcp.core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
+from asmit_mcp.tools.finance import convert_currency, settle_balances, split_expense
+from asmit_mcp.tools.security import audit_tool_list
+from asmit_mcp.tools.utility import (
     check_url_status,
     generate_password,
     password_strength,
@@ -175,7 +175,7 @@ class TestSSRF(unittest.TestCase):
     def test_public_address_passes_guard_with_mocked_dns(self):
         fake_addr = [(socket.AF_INET, socket.SOCK_STREAM, 6, "",
                       ("93.184.216.34", 443))]
-        with mock.patch("core.ssrf.socket.getaddrinfo",
+        with mock.patch("asmit_mcp.core.ssrf.socket.getaddrinfo",
                         return_value=fake_addr):
             self.assertIsNone(validate_url("https://example.com/"))
 
@@ -198,7 +198,7 @@ class TestRateLimiter(unittest.TestCase):
 
 class TestExternalFailures(unittest.TestCase):
     def test_currency_api_failure_returns_error_code(self):
-        with mock.patch("tools.finance.get_json",
+        with mock.patch("asmit_mcp.tools.finance.get_json",
                         return_value=(None, ("EXTERNAL_API_ERROR", "boom"))):
             result = parse(convert_currency(100.0, "AAA", "BDT"))
             self.assertFalse(result["ok"])
@@ -211,8 +211,8 @@ class TestExternalFailures(unittest.TestCase):
             convert_currency(100.0, "U$D", "BDT")
 
     def test_network_timeout_maps_to_external_error(self):
-        from core.http import get_json
-        with mock.patch("core.http.urllib.request.urlopen",
+        from asmit_mcp.core.http import get_json
+        with mock.patch("asmit_mcp.core.http.urllib.request.urlopen",
                         side_effect=TimeoutError("timed out")):
             data, error = get_json("https://example.com/api")
             self.assertIsNone(data)
@@ -221,7 +221,7 @@ class TestExternalFailures(unittest.TestCase):
 
 class TestServerWrapper(unittest.TestCase):
     def test_validation_error_becomes_clean_json(self):
-        from server import logged
+        from asmit_mcp.server import logged
 
         @logged
         def bad():
@@ -232,7 +232,7 @@ class TestServerWrapper(unittest.TestCase):
         self.assertEqual(result["error_code"], "VALIDATION_ERROR")
 
     def test_unexpected_error_becomes_unknown_error(self):
-        from server import logged
+        from asmit_mcp.server import logged
 
         @logged
         def boom():

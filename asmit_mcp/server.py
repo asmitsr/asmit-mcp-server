@@ -24,9 +24,9 @@ import time
 
 from mcp.server.fastmcp import FastMCP
 
-from core.errors import UNKNOWN_ERROR, ValidationError, failure
-from core.ssrf import SSRFBlockedError
-from tools import finance, github, security, utility
+from asmit_mcp.core.errors import UNKNOWN_ERROR, ValidationError, failure
+from asmit_mcp.core.ssrf import SSRFBlockedError
+from asmit_mcp.tools import finance, github, security, utility
 
 mcp = FastMCP("asmit-dev-tools")
 
