@@ -1,5 +1,5 @@
 [project]
-name = "asmit-dev-tools-mcp"
+name = "asmit-mcp-server"
 version = "1.0.0"
 description = "A small, safe MCP server: password breach check, expense splitting, public repo health, and a static tool-list audit."
 readme = "README.md"
@@ -26,4 +26,4 @@ build-backend = "setuptools.build_meta"
 packages = ["asmit_mcp", "asmit_mcp.core", "asmit_mcp.tools"]
 
 [project.scripts]
-asmit-dev-tools = "asmit_mcp.server:main"
+asmit-mcp-server = "asmit_mcp.server:main"

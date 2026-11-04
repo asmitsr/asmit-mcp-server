@@ -1,1 +1,1 @@
-{"mcpServers":{"asmit-dev-tools":{"args":["--from","git+https://github.com/asmitsr/asmit-mcp-server.git","asmit-dev-tools"],"command":"uvx"}}}
+{"mcpServers":{"asmit-mcp-server":{"args":["--from","git+https://github.com/asmitsr/asmit-mcp-server.git","asmit-mcp-server"],"command":"uvx"}}}

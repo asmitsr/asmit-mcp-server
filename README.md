@@ -69,9 +69,9 @@ Claude Desktop config (`claude_desktop_config.json`), using `uvx`:
 ```json
 {
   "mcpServers": {
-    "asmit-dev-tools": {
+    "asmit-mcp-server": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/asmitsr/asmit-mcp-server.git", "asmit-dev-tools"]
+      "args": ["--from", "git+https://github.com/asmitsr/asmit-mcp-server.git", "asmit-mcp-server"]
     }
   }
 }
