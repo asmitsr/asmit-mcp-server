@@ -67,7 +67,7 @@ All notable changes to Asmit Dev Tools are recorded here.
   workflow files). Run #1 failed because the install step was missing;
   run #2 passed after adding `pip install . ruff`.
 
-## v1.0.0 — 4 November 2026
+## v0.1.0 — 4 November 2026
 
 ### Added
 
