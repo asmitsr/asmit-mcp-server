@@ -1,4 +1,4 @@
-"""Protocol test: connect to server.py over stdio, list tools, call each.
+"""Protocol test: connect to asmit_mcp.server over stdio, list tools, call each.
 
 Run:  .venv/bin/python test_client.py
 Exits non-zero if any check fails; prints PASS lines otherwise.
@@ -32,7 +32,7 @@ async def call(session, name, args):
 
 
 async def main():
-    params = StdioServerParameters(command=sys.executable, args=["server.py"],
+    params = StdioServerParameters(command=sys.executable, args=["-m", "asmit_mcp.server"],
                                    env=PROXY_ENV)
     async with stdio_client(params) as (read, write):  # noqa: SIM117
         async with ClientSession(read, write) as session:

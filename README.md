@@ -31,7 +31,7 @@ exactly the capabilities the MCP security discussion warns about.
 
 ## Architecture (Phase 1)
 
-`server.py` is only the registrar (FastMCP + logging wrapper). Tool
+`asmit_mcp/server.py` is only the registrar (FastMCP + logging wrapper). Tool
 logic lives in `tools/` — `security.py`, `finance.py`, `github.py`,
 `utility.py` — and shared helpers live in `core/` — `errors.py`
 (response format), `validation.py` (input rules), `http.py` (timeouts,
@@ -80,7 +80,7 @@ Claude Desktop config (`claude_desktop_config.json`), using `uvx`:
 Or run the server directly for testing:
 
 ```bash
-.venv/bin/python server.py
+.venv/bin/python -m asmit_mcp.server
 ```
 
 ## Example prompts (once connected)
@@ -109,7 +109,7 @@ Lint:
 
 ```bash
 .venv/bin/pip install ruff
-.venv/bin/ruff check server.py core tools tests test_client.py
+.venv/bin/ruff check asmit_mcp tests test_client.py
 ```
 
 The test client connects over stdio, lists the tools, and calls each
