@@ -4,11 +4,12 @@ version = "0.1.0"
 description = "A small, safe MCP server: password breach check, expense splitting, public repo health, and a static tool-list audit."
 readme = "README.md"
 authors = [{name = "Asmit Sarkar"}]
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ["mcp", "model-context-protocol", "claude", "security", "github"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Libraries",
 ]
@@ -18,8 +19,19 @@ requires-python = ">=3.10"
 # most clients and tutorials use.
 dependencies = ["mcp>=1.0,<2"]
 
+[project.urls]
+Homepage = "https://github.com/asmitsr/asmit-mcp-server"
+Repository = "https://github.com/asmitsr/asmit-mcp-server"
+Issues = "https://github.com/asmitsr/asmit-mcp-server"
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
+
 [build-system]
-requires = ["setuptools>=61"]
+# setuptools 77 is the first release line with PEP 639 support
+# (SPDX `license = "MIT"` + `license-files`). 77.0.0 was never
+# published on PyPI, so the minimum that exists is 77.0.1.
+requires = ["setuptools>=77.0.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
