@@ -108,7 +108,7 @@ rate-limit, timeout, currency-failure and expense edge cases:
 Lint:
 
 ```bash
-.venv/bin/pip install ruff
+.venv/bin/pip install ".[dev]"
 .venv/bin/ruff check asmit_mcp tests test_client.py
 ```
 
@@ -131,9 +131,11 @@ public repo, and safe vs risky tool lists for the audit.
   intercepted (a VM whose resolver maps every hostname to a synthetic
   reserved address), the guard blocks instead of fetching — it never
   fails open. On a normal machine with direct DNS, public URLs pass.
-  The guard was verified with mocked DNS and with private addresses;
-  the public-URL path was not verified end-to-end in the proxied test
-  environment, for exactly this reason.
+  The connection is pinned to the validated IP, so DNS rebinding is
+  closed. The public-URL path was verified end-to-end on a real network
+  (GitHub Codespaces, 7 Nov 2026): public URLs return 200 and
+  private/loopback addresses are blocked. Proxy environment variables
+  (HTTP_PROXY/HTTPS_PROXY) are ignored by this connection — it goes direct.
 - MCP clients pass only a small environment whitelist to a stdio
   server by default. If your network needs a proxy, add its variables
   in your client's `env` config for this server; the included
@@ -146,12 +148,6 @@ public repo, and safe vs risky tool lists for the audit.
 
 ## Known limitations
 
-- DNS rebinding (TOCTOU): `check_url_status` validates the addresses a
-  hostname resolves to, but the connection then resolves the hostname
-  again. An attacker-controlled DNS record could change between the
-  check and the connection, so the guard alone does not close this
-  gap. A fix is planned for a later Phase 2 step: connect to the
-  validated IP while keeping the original Host header and TLS SNI.
 - Client testing: the server has only been tested with a Python MCP
   client over stdio. Claude Desktop, VS Code, and Cursor have NOT
   been tested yet.
