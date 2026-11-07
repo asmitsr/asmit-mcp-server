@@ -23,6 +23,9 @@ Rules:
     still use the original hostname, and the Host header carries it.
   - Redirects are followed manually (fetch_head_pinned), at most 5,
     each hop re-resolved and re-validated the same way.
+  - One check is bounded end to end: at most 60s across all hops and
+    IP fallbacks, and each socket operation (connect, HEAD read) at
+    most 15s. Every socket is closed on every path, success or error.
 
 This guard does not make a URL "safe" in general — it only stops the
 server from being used to reach non-public addresses. The target server
@@ -44,6 +47,7 @@ import http.client
 import ipaddress
 import socket
 import ssl
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -154,15 +158,18 @@ def _host_header(parsed):
     return host
 
 
-def _pinned_head_once(url):
+def _pinned_head_once(url, timeout=TIMEOUT_SECONDS):
     """One HEAD hop to a pinned IP. Returns (status, location).
 
     The hostname is resolved once and every address validated; the
     socket connects to one of those validated addresses, in resolver
     order, and is never re-resolved. HTTPS wraps the pinned socket
     with the original hostname as SNI, so certificate verification
-    still checks the hostname, not the IP.
+    still checks the hostname, not the IP. `timeout` caps each socket
+    operation (connect and HEAD read); the caller passes the time left
+    in the overall deadline, so it never exceeds TIMEOUT_SECONDS.
     """
+    timeout = min(timeout, TIMEOUT_SECONDS)
     parsed = urllib.parse.urlparse(url)
     _check_url_shape(parsed)
     hostname = parsed.hostname
@@ -176,23 +183,26 @@ def _pinned_head_once(url):
     sock = None
     for _family, ip in addresses:
         try:
-            sock = socket.create_connection((ip, port),
-                                            timeout=TIMEOUT_SECONDS)
+            sock = socket.create_connection((ip, port), timeout=timeout)
             break
         except OSError as exc:
             last_error = exc
     if sock is None:
         raise last_error
-    if parsed.scheme == "https":
-        context = ssl.create_default_context()
-        sock = context.wrap_socket(sock, server_hostname=hostname)
-        conn = http.client.HTTPSConnection(hostname, port,
-                                           timeout=TIMEOUT_SECONDS)
-    else:
-        conn = http.client.HTTPConnection(hostname, port,
-                                          timeout=TIMEOUT_SECONDS)
-    conn.sock = sock
+    conn = None
     try:
+        if parsed.scheme == "https":
+            context = ssl.create_default_context()
+            sock = context.wrap_socket(sock, server_hostname=hostname)
+            conn = http.client.HTTPSConnection(hostname, port,
+                                               timeout=timeout)
+        else:
+            conn = http.client.HTTPConnection(hostname, port,
+                                              timeout=timeout)
+        # Set explicitly: http.client never touches the timeout of a
+        # pre-connected socket, so this is what bounds the HEAD read.
+        sock.settimeout(timeout)
+        conn.sock = sock
         conn.request("HEAD", path, headers={
             "Host": host_header, "User-Agent": USER_AGENT})
         resp = conn.getresponse()
@@ -200,7 +210,13 @@ def _pinned_head_once(url):
         location = resp.getheader("Location")
         resp.read()
     finally:
-        conn.close()
+        # Every path closes a socket: success, request/read failure,
+        # and a wrap failure before conn existed (then the raw socket
+        # is closed instead).
+        if conn is not None:
+            conn.close()
+        else:
+            sock.close()
     return status, location
 
 
@@ -209,6 +225,10 @@ def _pinned_head_once(url):
 REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
 MAX_REDIRECTS = 5
 MAX_REPEATS = 4
+# Overall budget for one check_url_status call. Without it, 6 hops
+# times several validated IPs times TIMEOUT_SECONDS per connect/read
+# could run for minutes; 60s caps the whole check.
+OVERALL_TIMEOUT_SECONDS = 60
 
 
 def fetch_head_pinned(url):
@@ -219,14 +239,21 @@ def fetch_head_pinned(url):
     the current URL and an HTTPS -> HTTP downgrade is followed, as
     urllib did. Raises SSRFBlockedError when any hop resolves to a
     non-public address, ValidationError for a bad URL, OSError for a
-    network failure, and urllib.error.HTTPError when the redirect
-    limit is hit — the same shape urllib raises, so check_url_status
-    turns it into reachable True with the redirect status.
+    network failure, TimeoutError when the overall 60s deadline runs
+    out, and urllib.error.HTTPError when the redirect limit is hit —
+    the same shape urllib raises, so check_url_status turns it into
+    reachable True with the redirect status.
     """
+    deadline = time.monotonic() + OVERALL_TIMEOUT_SECONDS
     current = url
     visited = {}
     while True:
-        status, location = _pinned_head_once(current)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(
+                "check timed out: overall deadline "
+                f"({OVERALL_TIMEOUT_SECONDS}s) exceeded")
+        status, location = _pinned_head_once(current, timeout=remaining)
         if status not in REDIRECT_STATUS_CODES:
             return status, current
         if location is None:

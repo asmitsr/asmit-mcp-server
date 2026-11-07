@@ -10,6 +10,7 @@ offline, and they assert WHICH IP reached socket.create_connection —
 import json
 import os
 import socket
+import ssl
 import sys
 import unittest
 from typing import ClassVar
@@ -17,9 +18,13 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from asmit_mcp.core.http import USER_AGENT
+from asmit_mcp.core.http import TIMEOUT_SECONDS, USER_AGENT
 from asmit_mcp.core.ssrf import SSRFBlockedError, fetch_head_pinned
 from asmit_mcp.tools.utility import check_url_status
+
+# Saved before any test patches ssl.create_default_context, so the
+# verified-context test can build a REAL default context.
+_real_create_default_context = ssl.create_default_context
 
 
 def parse(result):
@@ -64,16 +69,20 @@ class FakeConnection:
         self.timeout = timeout
         self.sock = None
         self.requests = []
+        self.closed = False
         FakeConnection.instances.append(self)
 
     def request(self, method, url, body=None, headers=None):
         self.requests.append((method, url, headers or {}))
 
     def getresponse(self):
-        return FakeConnection.responses.pop(0)
+        resp = FakeConnection.responses.pop(0)
+        if isinstance(resp, Exception):
+            raise resp
+        return resp
 
     def close(self):
-        pass
+        self.closed = True
 
 
 class PinnedFetchTestBase(unittest.TestCase):
@@ -230,6 +239,104 @@ class TestHTTPS(PinnedFetchTestBase):
         self.assertEqual(conn.requests[0][2]["Host"], "example.com")
         self.ssl_context.wrap_socket.assert_called_once_with(
             self.sock, server_hostname="example.com")
+
+    def test_https_uses_verified_default_context(self):
+        # The REAL default context (not a mock): verify + check_hostname
+        # must be on, and wrap must get the original hostname as SNI.
+        real_ctx = _real_create_default_context()
+        FakeConnection.responses = [FakeResponse(200)]
+        with mock.patch(
+                "asmit_mcp.core.ssrf.ssl.create_default_context",
+                return_value=real_ctx), mock.patch.object(
+                    real_ctx, "wrap_socket",
+                    return_value=self.ssl_sock) as mock_wrap:
+            status, final_url = fetch_head_pinned(
+                "https://example.com/")
+        self.assertEqual((status, final_url), (200, "https://example.com/"))
+        self.assertTrue(real_ctx.check_hostname)
+        self.assertEqual(real_ctx.verify_mode, ssl.CERT_REQUIRED)
+        mock_wrap.assert_called_once_with(
+            self.sock, server_hostname="example.com")
+
+
+class TestTimeouts(PinnedFetchTestBase):
+    def test_connect_and_read_timeout_default_15s(self):
+        FakeConnection.responses = [FakeResponse(200)]
+        status, final_url = fetch_head_pinned("http://example.com/")
+        self.assertEqual((status, final_url), (200, "http://example.com/"))
+        self.mock_create_conn.assert_called_once_with(
+            (PUBLIC_IP, 80), timeout=TIMEOUT_SECONDS)
+        # The read timeout is set explicitly on the socket, because
+        # http.client never touches a pre-connected socket's timeout.
+        self.sock.settimeout.assert_called_once_with(TIMEOUT_SECONDS)
+
+    def test_https_read_timeout_set_on_wrapped_socket(self):
+        FakeConnection.responses = [FakeResponse(200)]
+        status, final_url = fetch_head_pinned("https://example.com/")
+        self.assertEqual((status, final_url), (200, "https://example.com/"))
+        self.ssl_sock.settimeout.assert_called_once_with(TIMEOUT_SECONDS)
+
+    def test_per_hop_timeout_capped_by_remaining_deadline(self):
+        # 5s left in the overall budget: the hop gets 5s, not 15s.
+        with mock.patch("asmit_mcp.core.ssrf.time.monotonic",
+                        side_effect=[1000.0, 1055.0]):
+            FakeConnection.responses = [FakeResponse(200)]
+            status, final_url = fetch_head_pinned("http://example.com/")
+        self.assertEqual((status, final_url), (200, "http://example.com/"))
+        self.mock_create_conn.assert_called_once_with(
+            (PUBLIC_IP, 80), timeout=5)
+        self.sock.settimeout.assert_called_once_with(5)
+
+    def test_overall_deadline_exceeded_before_next_hop(self):
+        with mock.patch("asmit_mcp.core.ssrf.time.monotonic",
+                        side_effect=[1000.0, 1061.0]), \
+                self.assertRaises(TimeoutError):
+            fetch_head_pinned("http://example.com/")
+        self.mock_create_conn.assert_not_called()
+
+    def test_check_url_status_deadline_is_unreachable(self):
+        with mock.patch("asmit_mcp.core.ssrf.time.monotonic",
+                        side_effect=[1000.0, 1061.0]):
+            result = parse(check_url_status("http://example.com/"))
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["reachable"])
+        self.assertIn("timed out", result["error"])
+
+
+class TestSocketClose(PinnedFetchTestBase):
+    def test_socket_closed_on_success(self):
+        FakeConnection.responses = [FakeResponse(200)]
+        status, final_url = fetch_head_pinned("http://example.com/")
+        self.assertEqual((status, final_url), (200, "http://example.com/"))
+        self.assertTrue(FakeConnection.instances[0].closed)
+
+    def test_socket_closed_when_response_fails(self):
+        FakeConnection.responses = [ConnectionResetError("reset")]
+        with self.assertRaises(ConnectionResetError):
+            fetch_head_pinned("http://example.com/")
+        self.assertTrue(FakeConnection.instances[0].closed)
+
+    def test_socket_closed_when_tls_wrap_fails(self):
+        self.ssl_context.wrap_socket.side_effect = ValueError(
+            "bad hostname")
+        with self.assertRaises(ValueError):
+            fetch_head_pinned("https://example.com/")
+        # conn never existed, so the raw socket is closed instead.
+        self.sock.close.assert_called_once_with()
+
+    def test_redirect_hops_each_close_their_socket(self):
+        dns = {"example.com": PUBLIC_IP, "other.example": PUBLIC_IP_2}
+        self.mock_getaddrinfo.side_effect = (
+            lambda host, port, *a, **k: addrinfo(dns[host]))
+        FakeConnection.responses = [
+            FakeResponse(302, "http://other.example/"),
+            FakeResponse(200),
+        ]
+        status, final_url = fetch_head_pinned("http://example.com/")
+        self.assertEqual((status, final_url), (200, "http://other.example/"))
+        self.assertEqual(len(FakeConnection.instances), 2)
+        self.assertTrue(
+            all(conn.closed for conn in FakeConnection.instances))
 
 
 class TestRedirects(PinnedFetchTestBase):
