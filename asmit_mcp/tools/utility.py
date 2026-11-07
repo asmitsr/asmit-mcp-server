@@ -8,13 +8,11 @@ import secrets
 import string
 import time
 import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from asmit_mcp.core.errors import SSRF_BLOCKED, failure, success
-from asmit_mcp.core.http import TIMEOUT_SECONDS, USER_AGENT
-from asmit_mcp.core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
+from asmit_mcp.core.ssrf import SSRFBlockedError, fetch_head_pinned, validate_url
 from asmit_mcp.core.validation import ValidationError, req_str, req_url
 
 
@@ -73,10 +71,11 @@ def check_url_status(url: str) -> str:
 
     SSRF guard (core.ssrf) runs before the request and again for every
     redirect target: only globally routable addresses may be fetched,
-    at most 5 redirects. Only a HEAD request is made; nothing is
-    downloaded fully and no form is submitted. "reachable: false" is a
-    result, not an error: it means the check itself ran and the URL
-    did not answer.
+    at most 5 redirects. The connection goes to a validated IP (DNS
+    pinning) via fetch_head_pinned; redirects are followed manually.
+    Only a HEAD request is made; nothing is downloaded fully and no
+    form is submitted. "reachable: false" is a result, not an error:
+    it means the check itself ran and the URL did not answer.
     """
     url = req_url(url)
     try:
@@ -85,12 +84,8 @@ def check_url_status(url: str) -> str:
         return failure(SSRF_BLOCKED,
                        "blocked: URL resolves to a non-public address")
     start = time.time()
-    req = urllib.request.Request(url, method="HEAD",
-                                 headers={"User-Agent": USER_AGENT})
-    opener = urllib.request.build_opener(SSRFRedirectHandler())
     try:
-        with opener.open(req, timeout=TIMEOUT_SECONDS) as resp:
-            status, final_url = resp.status, resp.geturl()
+        status, final_url = fetch_head_pinned(url)
     except urllib.error.HTTPError as exc:
         status = exc.code
         final_url = exc.geturl() if hasattr(exc, "geturl") else url
