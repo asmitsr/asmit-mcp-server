@@ -4,6 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-12_tools-7c3aed?style=flat-square)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![M8ven Score](https://m8ven.ai/badge/mcp/asmitsr-asmit-mcp-server-10fens?v=a7e6d45f8e9c577188027504dda77edd)](https://m8ven.ai/mcp/asmitsr-asmit-mcp-server-10fens?s=readme)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/asmitsr/badge.svg)](https://hub.xerj.org/contributors/asmitsr)
 
 A small, safe MCP server that other people can install from GitHub and
 connect to Claude Desktop, VS Code, Cursor or any MCP client. It is a
