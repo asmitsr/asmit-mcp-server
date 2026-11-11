@@ -150,6 +150,8 @@ public repo, and safe vs risky tool lists for the audit.
 
 ## Known limitations
 
-- Client testing: the server has only been tested with a Python MCP
-  client over stdio. Claude Desktop, VS Code, and Cursor have NOT
-  been tested yet.
+- Client testing: the server has been tested end-to-end with a Python MCP
+  client over stdio. VS Code and Cursor both discovered the server in their
+  MCP settings (8 Nov 2026), but no real-client tool call has been made yet
+  — neither client had an AI model/account available. Claude Desktop has
+  not been tested (not available on Linux).
