@@ -31,7 +31,7 @@ Deliberately **not** included: shell execution, file writes, database
 writes, money movement, or anything that handles secrets. Those are
 exactly the capabilities the MCP security discussion warns about.
 
-## Architecture (Phase 1)
+## Architecture
 
 `asmit_mcp/server.py` is only the registrar (FastMCP + logging wrapper). Tool
 logic lives in `tools/` — `security.py`, `finance.py`, `github.py`,
