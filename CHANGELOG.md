@@ -2,7 +2,7 @@
 
 All notable changes to Asmit Dev Tools are recorded here.
 
-## Unreleased — Phase 1: Security & Architecture (branch `phase-1-security`, not merged)
+## Phase 1: Security & Architecture (merged in PR #1)
 
 ### Security
 
@@ -49,18 +49,17 @@ All notable changes to Asmit Dev Tools are recorded here.
 
 ### Known limitations of this phase
 
-- DNS rebinding: the SSRF guard resolves DNS and checks the address,
-  but the connection then resolves the hostname a second time, so
-  check-time and connect-time IPs could differ if DNS flips in between
-  (TOCTOU). Static private/localhost/metadata cases are blocked in
-  this phase; the fix — an IP-pinned connection that connects to the
-  validated IP while preserving the Host header and TLS
-  `server_hostname` — is a Phase 2 hardening item.
+- DNS rebinding: fixed in PR #5 — the SSRF guard now pins the connection
+  to the validated IP (connecting directly to it while preserving the Host
+  header and TLS `server_hostname`), so check-time and connect-time IPs
+  can no longer differ (TOCTOU closed). Static private/localhost/metadata
+  cases were already blocked in this phase.
 - The public-URL path of `check_url_status` could not be verified
   end-to-end in the proxied test environment (local DNS maps every
   hostname to a synthetic reserved address, so the guard blocks it
-  there). Guard logic itself is verified with mocked DNS and private
-  addresses. See README "Honest limits".
+  there). It was later verified end-to-end on a real network (GitHub
+  Codespaces, 7 Nov 2026): public URLs return 200 and private/loopback
+  addresses are blocked. See README "Honest limits".
 - Client compatibility (Claude Desktop, VS Code, Cursor) is still
   untested — it needs a PC. Nothing is claimed about it.
 - CI is on this branch via the web UI (the GitHub App cannot create
