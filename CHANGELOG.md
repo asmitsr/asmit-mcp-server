@@ -2,6 +2,20 @@
 
 All notable changes to Asmit Dev Tools are recorded here.
 
+## Unreleased — Phase 2 (in progress)
+
+### Added
+
+- `generate_uuid` (`tools/devtools.py`): 1-100 random UUID v4 values,
+  generated locally.
+- `hash_text`: SHA-256/SHA-1/MD5 hex digest of text, computed locally.
+  SHA-1/MD5 are documented as checksums only, never for passwords.
+- `codec_base64_url`: Base64 and URL encode/decode of text; invalid
+  Base64 input returns a clean validation error.
+- Tool count is now 15 (was 12). Tests: 61 unit tests (was 54),
+  including UUID format/count, known SHA-256 value, and Base64/URL
+  round-trips. Ruff clean.
+
 ## Phase 1: Security & Architecture (merged in PR #1)
 
 ### Security
