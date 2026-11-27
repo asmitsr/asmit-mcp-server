@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from asmit_mcp.core.errors import ValidationError
 from asmit_mcp.core.ratelimit import RateLimiter
 from asmit_mcp.core.ssrf import SSRFBlockedError, SSRFRedirectHandler, validate_url
+from asmit_mcp.tools.devtools import codec_base64_url, generate_uuid, hash_text
 from asmit_mcp.tools.finance import convert_currency, settle_balances, split_expense
 from asmit_mcp.tools.security import audit_tool_list
 from asmit_mcp.tools.utility import (
@@ -241,6 +242,48 @@ class TestServerWrapper(unittest.TestCase):
         result = parse(boom())
         self.assertFalse(result["ok"])
         self.assertEqual(result["error_code"], "UNKNOWN_ERROR")
+
+
+class TestDevTools(unittest.TestCase):
+    def test_generate_uuid_count_and_format(self):
+        import uuid as uuid_mod
+        result = parse(generate_uuid(3))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 3)
+        for value in result["uuids"]:
+            self.assertEqual(uuid_mod.UUID(value).version, 4)
+
+    def test_generate_uuid_bad_count_raises(self):
+        for bad in (0, 101, "3", True):
+            with self.assertRaises(ValidationError):
+                generate_uuid(bad)
+
+    def test_hash_text_sha256_known_value(self):
+        result = parse(hash_text("hello"))
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["hash"],
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+
+    def test_hash_text_bad_algorithm_raises(self):
+        with self.assertRaises(ValidationError):
+            hash_text("hello", "sha512")
+
+    def test_codec_base64_round_trip(self):
+        encoded = parse(codec_base64_url("hello", "base64_encode"))
+        self.assertEqual(encoded["result"], "aGVsbG8=")
+        decoded = parse(codec_base64_url("aGVsbG8=", "base64_decode"))
+        self.assertEqual(decoded["result"], "hello")
+
+    def test_codec_invalid_base64_raises(self):
+        with self.assertRaises(ValidationError):
+            codec_base64_url("!!!not-base64!!!", "base64_decode")
+
+    def test_codec_url_round_trip(self):
+        encoded = parse(codec_base64_url("a b&c", "url_encode"))
+        self.assertEqual(encoded["result"], "a%20b%26c")
+        decoded = parse(codec_base64_url("a%20b%26c", "url_decode"))
+        self.assertEqual(decoded["result"], "a b&c")
 
 
 if __name__ == "__main__":

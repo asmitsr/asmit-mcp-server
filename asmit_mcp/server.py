@@ -26,7 +26,7 @@ from mcp.server.fastmcp import FastMCP
 
 from asmit_mcp.core.errors import UNKNOWN_ERROR, ValidationError, failure
 from asmit_mcp.core.ssrf import SSRFBlockedError
-from asmit_mcp.tools import finance, github, security, utility
+from asmit_mcp.tools import devtools, finance, github, security, utility
 
 mcp = FastMCP("asmit-dev-tools")
 
@@ -47,6 +47,9 @@ ALL_TOOLS = [
     security.audit_tool_list,
     utility.check_url_status,
     utility.world_time,
+    devtools.generate_uuid,
+    devtools.hash_text,
+    devtools.codec_base64_url,
 ]
 
 

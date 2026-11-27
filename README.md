@@ -1,7 +1,7 @@
 # Asmit Dev Tools — MCP Server
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![MCP](https://img.shields.io/badge/MCP-12_tools-7c3aed?style=flat-square)](https://modelcontextprotocol.io/)
+[![MCP](https://img.shields.io/badge/MCP-15_tools-7c3aed?style=flat-square)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![M8ven Score](https://m8ven.ai/badge/mcp/asmitsr-asmit-mcp-server-10fens?v=a7e6d45f8e9c577188027504dda77edd)](https://m8ven.ai/mcp/asmitsr-asmit-mcp-server-10fens?s=readme)
 [![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/asmitsr/badge.svg)](https://hub.xerj.org/contributors/asmitsr)
@@ -26,6 +26,9 @@ program, not a website — it runs over stdio and is not deployed to Vercel.
 | `audit_tool_list` | Static security checklist for an MCP server's tool list (score + findings + fixes). Nothing is run and nothing connects to a live server. |
 | `check_url_status` | Checks whether a URL is reachable and what status it returns (HEAD). Guarded against SSRF: only globally routable addresses may be fetched, and every redirect target is re-validated (max 5 redirects). |
 | `world_time` | Current time in any IANA timezone, plus UTC and Asia/Dhaka. |
+| `generate_uuid` | Generates 1-100 random UUID v4 values locally. |
+| `hash_text` | Hashes text with SHA-256 (default), SHA-1 or MD5 and returns the hex digest. SHA-1/MD5 are for checksums only, never for passwords. The text is hashed locally, never sent anywhere. |
+| `codec_base64_url` | Base64 or URL encode/decode of text. Invalid Base64 input returns a clean validation error. |
 
 Deliberately **not** included: shell execution, file writes, database
 writes, money movement, or anything that handles secrets. Those are
@@ -35,7 +38,7 @@ exactly the capabilities the MCP security discussion warns about.
 
 `asmit_mcp/server.py` is only the registrar (FastMCP + logging wrapper). Tool
 logic lives in `tools/` — `security.py`, `finance.py`, `github.py`,
-`utility.py` — and shared helpers live in `core/` — `errors.py`
+`utility.py`, `devtools.py` — and shared helpers live in `core/` — `errors.py`
 (response format), `validation.py` (input rules), `http.py` (timeouts,
 response cap, rate limit), `cache.py` (currency-rate cache),
 `ratelimit.py` (per-host call limit), `ssrf.py` (URL guard).
